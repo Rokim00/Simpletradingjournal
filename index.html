@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Monthly Trading Journal</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f5f7fa;
+      padding: 20px;
+      color: #333;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    .month-selector {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .month-selector button {
+      margin: 4px;
+      padding: 6px 12px;
+      font-size: 14px;
+      border: none;
+      border-radius: 4px;
+      background-color: #3498db;
+      color: white;
+      cursor: pointer;
+    }
+    .journal {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 20px;
+      max-width: 1300px;
+      margin: auto;
+    }
+    .day {
+      background: white;
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .day h3 {
+      text-align: center;
+    }
+    .field input {
+      width: 100%;
+      padding: 4px;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .summary, .instructions {
+      max-width: 800px;
+      margin: 30px auto;
+      text-align: center;
+    }
+    .export-btn {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #2ecc71;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Monthly Trading Journal</h1>
+<div class="month-selector" id="monthSelector"></div>
+<h2 id="monthTitle"></h2>
+<div class="journal" id="journal"></div>
+<div class="summary">
+  <h2>Total Pips: <span id="totalPips">0</span> | Total $: <span id="totalDollars">0</span></h2>
+  <button class="export-btn" onclick="exportToText()">Download TXT Report</button>
+</div>
+<div class="instructions">
+  <h2>How to Use This Journal</h2>
+  <p>Each day, log your trades. You may take a maximum of 2 trades/day. If your first trade is profitable, stop for the day. If it's a loss, you can take one more trade. Use a consistent lot size and a fixed risk-reward of 1:3.</p>
+  <p>For each trade, input the number of pips won or lost. Also input your lot size for the day. Your dollar profit will be calculated automatically using: (Pips / 10) × (Lot Size / 0.01).</p>
+  <p>Use the "Traded Today" checkbox to log which days you participated. Skip days are also part of discipline!</p>
+</div>
+
+<script>
+  const journal = document.getElementById("journal");
+  const monthSelector = document.getElementById("monthSelector");
+  const totalPipsDisplay = document.getElementById("totalPips");
+  const totalDollarsDisplay = document.getElementById("totalDollars");
+  const monthTitle = document.getElementById("monthTitle");
+
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  let currentMonth = new Date().getMonth();
+  let journalData = {};
+
+  function saveJournal(month) {
+    localStorage.setItem("journal_" + month, JSON.stringify(journalData[month]));
+  }
+
+  function loadJournal(month) {
+    currentMonth = month;
+    journalData[month] = JSON.parse(localStorage.getItem("journal_" + month)) || Array(30).fill(null).map(() => ({
+      trade1: null,
+      trade2: null,
+      lot: null,
+      skipped: false
+    }));
+    renderJournal();
+  }
+
+  function calculateTotals() {
+    let totalPips = 0;
+    let totalDollars = 0;
+    journalData[currentMonth].forEach(day => {
+      const pips = (Number(day.trade1) || 0) + (Number(day.trade2) || 0);
+      const lot = Number(day.lot) || 0;
+      totalPips += pips;
+      totalDollars += (pips / 10) * (lot / 0.01);
+    });
+    totalPipsDisplay.textContent = totalPips;
+    totalDollarsDisplay.textContent = totalDollars.toFixed(2);
+    saveJournal(currentMonth);
+  }
+
+  function renderJournal() {
+    monthTitle.textContent = months[currentMonth];
+    journal.innerHTML = "";
+    journalData[currentMonth].forEach((day, i) => {
+      const box = document.createElement("div");
+      box.className = "day";
+      box.innerHTML = `<h3>Day ${i + 1}</h3>`;
+
+      ["trade1", "trade2", "lot"].forEach(key => {
+        const input = document.createElement("input");
+        input.type = "number";
+        input.placeholder = key === "lot" ? "Lot Size" : `Trade ${key === "trade1" ? 1 : 2} Pips`;
+        input.value = day[key] !== null ? day[key] : '';
+        input.onchange = () => {
+          day[key] = input.value ? parseFloat(input.value) : null;
+          calculateTotals();
+        };
+        box.appendChild(input);
+      });
+
+      const checkDiv = document.createElement("div");
+      checkDiv.className = "checkbox";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = !day.skipped;
+      checkbox.onchange = () => {
+        day.skipped = !checkbox.checked;
+        saveJournal(currentMonth);
+      };
+      const label = document.createElement("label");
+      label.textContent = "Traded Today";
+      checkDiv.appendChild(checkbox);
+      checkDiv.appendChild(label);
+      box.appendChild(checkDiv);
+
+      journal.appendChild(box);
+    });
+    calculateTotals();
+  }
+
+  function exportToText() {
+    const days = journalData[currentMonth];
+    let text = `Trading Report for ${months[currentMonth]}\n\n`;
+    let totalPips = 0, totalDollars = 0;
+
+    days.forEach((day, i) => {
+      const pips = (Number(day.trade1) || 0) + (Number(day.trade2) || 0);
+      const lot = Number(day.lot) || 0;
+      const dollars = (pips / 10) * (lot / 0.01);
+      totalPips += pips;
+      totalDollars += dollars;
+
+      text += `Day ${i+1}: Trade 1 = ${day.trade1 || 0} pips, Trade 2 = ${day.trade2 || 0} pips, Lot = ${lot}, Traded = ${!day.skipped}, $ = ${dollars.toFixed(2)}\n`;
+    });
+
+    text += `\nTotal Pips: ${totalPips}\nTotal $: ${totalDollars.toFixed(2)}\n`;
+    const blob = new Blob([text], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Trading_Report_${months[currentMonth]}.txt`;
+    link.click();
+  }
+
+  months.forEach((month, i) => {
+    const btn = document.createElement("button");
+    btn.textContent = month;
+    btn.onclick = () => loadJournal(i);
+    monthSelector.appendChild(btn);
+  });
+
+  loadJournal(currentMonth);
+</script>
+</body>
+</html>
