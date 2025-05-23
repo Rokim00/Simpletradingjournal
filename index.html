@@ -136,12 +136,12 @@
     journalData[currentMonth].forEach((day, i) => {
       const box = document.createElement("div");
       box.className = "day";
-      box.innerHTML = <h3>Day ${i + 1}</h3>;
+      box.innerHTML = `<h3>Day ${i + 1}</h3>`;
 
       ["trade1", "trade2", "lot"].forEach(key => {
         const input = document.createElement("input");
         input.type = "number";
-        input.placeholder = key === "lot" ? "Lot Size" : Trade ${key === "trade1" ? 1 : 2} Pips;
+        input.placeholder = key === "lot" ? "Lot Size" : `Trade ${key === "trade1" ? 1 : 2} Pips`;
         input.value = day[key] !== null ? day[key] : '';
         input.onchange = () => {
           day[key] = input.value ? parseFloat(input.value) : null;
@@ -172,7 +172,7 @@
 
   function exportToText() {
     const days = journalData[currentMonth];
-    let text = Trading Report for ${months[currentMonth]}\n\n;
+    let text = `Trading Report for ${months[currentMonth]}\n\n`;
     let totalPips = 0, totalDollars = 0;
 
     days.forEach((day, i) => {
@@ -182,14 +182,14 @@
       totalPips += pips;
       totalDollars += dollars;
 
-      text += Day ${i+1}: Trade 1 = ${day.trade1 || 0} pips, Trade 2 = ${day.trade2 || 0} pips, Lot = ${lot}, Traded = ${!day.skipped}, $ = ${dollars.toFixed(2)}\n;
+      text += `Day ${i+1}: Trade 1 = ${day.trade1 || 0} pips, Trade 2 = ${day.trade2 || 0} pips, Lot = ${lot}, Traded = ${!day.skipped}, $ = ${dollars.toFixed(2)}\n`;
     });
 
-    text += \nTotal Pips: ${totalPips}\nTotal $: ${totalDollars.toFixed(2)}\n;
+    text += `\nTotal Pips: ${totalPips}\nTotal $: ${totalDollars.toFixed(2)}\n`;
     const blob = new Blob([text], { type: "text/plain" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = Trading_Report_${months[currentMonth]}.txt;
+    link.download = `Trading_Report_${months[currentMonth]}.txt`;
     link.click();
   }
 
